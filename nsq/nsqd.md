@@ -77,21 +77,22 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 		go c.messagePump()	
 	}
 
-`
-func (c *Channel) messagePump() {
-	for {
-		select {
-			case msg = <- c.memoryMsgChan: 
-			case buf = <- c.backend.ReadChan():
-				msg,err = decodeMessage(buff)
-			case <- c.exitChan:  // 退出
-				goto exit
-		}
+	func (c *Channel) messagePump() {
+		for {
+			select {
+				case msg = <- c.memoryMsgChan: 
+				case buf = <- c.backend.ReadChan():
+					msg,err = decodeMessage(buff)
+				case <- c.exitChan:  // 退出
+					goto exit
+			}
 
-		atomic.StoreInt32(&c.bufferedCount, 1) 
-		// 连接到nsqd的client会处理c.clientMsgChan
-		c.clientMsgChan <- msg
-		atomic.StoreInt32(&c.bufferedCount, 0)
+			atomic.StoreInt32(&c.bufferedCount, 1) 
+			// 连接到nsqd的client会处理c.clientMsgChan
+			c.clientMsgChan <- msg
+			atomic.StoreInt32(&c.bufferedCount, 0)
+		}
 	}
-}
-`
+
+未完待续
+========
