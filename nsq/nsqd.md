@@ -1,10 +1,9 @@
 #### nsqd
 1. nsqd的main()函数在apps/nsqd/nsqd.go  
-=====================================
-	main()函数的主要工作：
-	* 创建nsqd
-	* 监听端口,建立client连接
-	* 为topic，channel创建处理chans的goroutine
+main()函数的主要工作：
+* 创建nsqd
+* 监听端口,建立client连接
+* 为topic，channel创建处理chans的goroutine
 
 	func main() {
 		// 设置默认配置
