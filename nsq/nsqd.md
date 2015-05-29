@@ -36,7 +36,7 @@ nsqd的main()函数在apps/nsqd/nsqd.go.
 		nsqd.Exit()
 	}
 
-nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel()
+nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel()。这两个函数作用类似，都是构建结构，然后开启goroutine循环处理chan
 
 	func NewTopic(topicName string, ...) *Topic {
 		t := &Topic{}  
