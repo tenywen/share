@@ -4,9 +4,9 @@ main()函数的主要工作：
 
 * 创建nsqd。
 * 监听端口，为每个连接创建client
+
  
 	func main() {
-
 		// 设置默认配置
 		// 从stdin读取新配置并修改。是version，则显示版本号之后,退出main
 		...
@@ -111,6 +111,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 ######	[1]NewTopic()在nsqd/topic.go.
 *	创建topic对象，开启goroutine处理chans.
 
+
     func NewTopic(topicName string, ...) *Topic {
 		t := &Topic{}  
 		// 处理topic里面的chans
@@ -145,7 +146,8 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
     }
 
 ######[2].NewChannel()在nsqd/channel.go.
-*	创建channel对象，开启goroutine处理chans.	
+*	创建channel对象，开启goroutine处理chans
+
 
     func (c *Channel)NewChannel(topicName string,channelName string,...) *Channel{
 		c := &Channel{}
