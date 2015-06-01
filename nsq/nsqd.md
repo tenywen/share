@@ -1,48 +1,47 @@
 #### nsqd
 #####1. nsqd的main()函数在apps/nsqd/nsqd.go.
+
 main()函数的主要工作：
 
 * 创建nsqd。
 * 监听端口，为每个连接创建client
-	
 
+<code>
+func main() {
+	// 设置默认配置
+	// 从stdin读取新配置并修改。是version，则显示版本号之后,退出main
+	...
 
-	func main() {
+	// 设置捕获终端信号 
+	...
+		
+	// resolve ops from config
+	... 
+		
+	// 创建nsqd 
+	nsqd := nsqd.NewNSQD(opts) 
 
-		// 设置默认配置
+	// 看起来好像是读取opts.DataPath路径的文件。其实是创建topics。
+	nsqd.LoadMetadata() 
 
-		// 从stdin读取新配置并修改。是version，则显示版本号之后,退出main
-		...
+	// 记录topics/channels 
+	// topics 记录topic.Name,topic.IsPaused()
+	// channel 记录channel.Name,channel.IsPaused()
+	err := nsqd.PersistMetadata()
 
-		// 设置捕获终端信号 
-		...
+	// Main主要做三件事 
+	// 1.监听 tcp/http/https 端口 
+	// 2.为每个连接到nsqd的conn建立一个client
+	// 3.client负责处理conn传输的命令
+	nsqd.Main()
 
-		// resolve ops from config
-		... 
+	// 阻塞！等待终端信号 
+	<- signalChan 
 
-		// 创建nsqd 
-		nsqd := nsqd.NewNSQD(opts) 
-
-		// 看起来好像是读取opts.DataPath路径的文件。其实是创建topics。
-		nsqd.LoadMetadata() 
-	
-		// 记录topics/channels 
-		// topics 记录topic.Name,topic.IsPaused()
-		// channel 记录channel.Name,channel.IsPaused()
-		err := nsqd.PersistMetadata()
-
-		// Main主要做三件事 
-		// 1.监听 tcp/http/https 端口 
-		// 2.为每个连接到nsqd的conn建立一个client
-		// 3.client负责处理conn传输的命令
-		nsqd.Main()
-
-		// 阻塞！等待终端信号 
-		<- signalChan 
-	
-		// 等待nsqd.Main()所有的wg.Done()完成
-		nsqd.Exit()
-	}
+	// 等待nsqd.Main()所有的wg.Done()完成
+	nsqd.Exit()
+}
+</code>
 -----------------------------------
 
 #####2. nsqd.LoadMetadata()在nsqd/nsqd.go.
