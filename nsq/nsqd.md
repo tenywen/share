@@ -5,6 +5,6 @@ main()主要功能为:
 * 创建nsqd
 * 监听端口，为连接创建client 
 
-	func main() {
-		// 设置默认值
-	}
+		func main() {
+			// 设置默认值
+		}
