@@ -104,8 +104,9 @@ main()函数的主要工作：
 		}
 
 nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel().
-#### (1).NewTopic()在nsqd/topic.go.
+#### (1).NewTopic()和messagePump()在nsqd/topic.go.
 *	创建topic对象，开启goroutine处理chans.
+* 	topic.messagePump()将topic的数据分发给channels
 
 		func NewTopic(topicName string, ...) *Topic {
 			t := &Topic{}  
@@ -128,20 +129,21 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 						goto exit
 				}
 
+				// topic 的数据分发给channels
 				for i,channel := range chans {
 					chanMsg := msg 
 					// 当channel数大于1时，拷贝message发送给每个channel
 					if i > 0 {
 						chanMsg = NewMessage(msg.ID,msg.Body)
 					}
-					// PutMessage最终调用diskQueue.writeOne()chanMsg写成文件
+					// channel.memoryMsgChan容量未满，则chanMsg 放入到channel.memoryMsgChan。否则写成文件
 					channel.PutMessage(chanMsg)
 				}
 			}
     	}
 
-#### (2).NewChannel()在nsqd/channel.go.
-*	创建channel对象，开启goroutine处理chans
+#### (2).NewChannel()和messagePump()在nsqd/channel.go.
+*	创建channel对象，开启goroutine处理chans 
 
     	func (c *Channel)NewChannel(topicName string,channelName string,...) *Channel{
 			c := &Channel{}
@@ -159,7 +161,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 				}
 
 				atomic.StoreInt32(&c.bufferedCount, 1) 
-				// 连接到nsqd的client会处理c.clientMsgChan
+				// c.clientMsgChan会随机分配数据给连接到channel的clients
 				c.clientMsgChan <- msg
 				atomic.StoreInt32(&c.bufferedCount, 0)
 			}
@@ -167,7 +169,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 
 
 ### 3. nsqd.Main() 在nsqd/nsqd.go
-* 主要功能为监听端口，为每个连接创建client.可以通过tcp，http，https连接到nsqd，这里只分析tcp.
+* 主要功能为监听端口，为每个连接创建client。可以通过tcp，http，https连接到nsqd，这里只分析tcp。
 
 		func (n *NSQD) Main() {
 			// 监听tcp
@@ -211,6 +213,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 
 ##### Handle()在nsqd/tcp.go
 * 检查协议版本，调用IOLoop()
+		
 		func (p *tcpServer) Handle(clientConn net.Conn) {
 
 			// 封装又封装。。。
@@ -222,7 +225,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 		}
 
 ###### IOLoop()在nsqd/protocol_v2.go 
-* 解析clientConn协议，并执行协议 
+* 解析clientConn协议，并执行协议。
 
 		func (p *protocolV2) IOLoop(conn net.Conn) error {
 			clientID := atomic.AddInt64(&p.ctx.nsqd.clientIDSequence, 1)
@@ -230,6 +233,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 
 			messagePumpStartedChan := make(chan bool)
 			go p.messagePump(client, messagePumpStartedChan)
+			// 同步 ！防止messagePump中client处理chan的函数还没有执行
 			<-messagePumpStartedChan
 
 			for {
@@ -253,3 +257,102 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 				response, err := p.Exec(client, params)
 			}
 		}
+
+
+p.messagePump()在nsqd/protocol_v2.go 
+* 处理client channels 
+	
+		func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
+			var clientMsgChan chan *Message
+			var subChannel *Channel
+			var flusherChan <-chan time.Time
+
+			subEventChan := client.SubEventChan
+			identifyEventChan := client.IdentifyEventChan
+		
+			outputBufferTicker := time.NewTicker(client.OutputBufferTimeout)
+			heartbeatTicker := time.NewTicker(client.HeartbeatInterval)
+			heartbeatChan := heartbeatTicker.C
+			msgTimeout := client.MsgTimeout
+
+			flushed := true
+
+			close(startedChan)
+
+			for {
+				if subChannel == nil || !client.IsReadyForMessages() { // 刷新client之前的数据
+					clientMsgChan = nil
+					flusherChan = nil
+					client.Lock()
+					err = client.Flush()
+					client.Unlock()
+					if err != nil {
+						goto exit
+					}
+					flushed = true
+				} else if flushed { // 刷新之后，等待client连接的channel的数据。
+					clientMsgChan = subChannel.clientMsgChan
+					flusherChan = nil
+				} else { // 设置一个刷新timer
+					clientMsgChan = subChannel.clientMsgChan
+					flusherChan = outputBufferTicker.C
+				}
+
+				select {
+					case <-flusherChan: // 通知刷新
+						client.Lock()
+						err = client.Flush()
+						client.Unlock()
+						if err != nil {
+							goto exit
+						}
+						flushed = true
+					case <-client.ReadyStateChan: // client 准备好了。
+					case subChannel = <-subEventChan: // 已经给client 分配了一个channel
+						// 一个client 只能分配一次
+						subEventChan = nil
+					case identifyData := <-identifyEventChan: // 设置identify
+						// 只能设置一次
+						identifyEventChan = nil
+
+						outputBufferTicker.Stop()
+						if identifyData.OutputBufferTimeout > 0 {
+							outputBufferTicker = time.NewTicker(identifyData.OutputBufferTimeout)
+						}
+
+						heartbeatTicker.Stop()
+						heartbeatChan = nil
+						if identifyData.HeartbeatInterval > 0 {
+							heartbeatTicker = time.NewTicker(identifyData.HeartbeatInterval)
+							heartbeatChan = heartbeatTicker.C
+						}
+
+						if identifyData.SampleRate > 0 {
+							sampleRate = identifyData.SampleRate
+						}
+
+						msgTimeout = identifyData.MsgTimeout
+					case <-heartbeatChan: // 心跳检查
+						err = p.Send(client, frameTypeResponse, heartbeatBytes)
+						if err != nil {
+							goto exit
+						}
+					case msg, ok := <-clientMsgChan: // channel的数据
+						if !ok {
+							goto exit
+						}
+						// 把msg放到堆上
+						subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
+						// 计数器 + 1	
+						client.SendingMessage()
+						err = p.SendMessage(client, msg, &buf)
+						if err != nil {
+							goto exit
+						}
+						flushed = false
+					case <-client.ExitChan:
+						goto exit
+					}
+				}
+			}
+
