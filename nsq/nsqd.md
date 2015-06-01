@@ -3,8 +3,8 @@
 main()函数的主要工作：
  * 创建nsqd。
  * 监听端口，为每个连接创建client
-
-    func main() {
+    
+	func main() {
 		// 设置默认配置
 		// 从stdin读取新配置并修改。是version，则显示版本号之后,退出main
 		...
