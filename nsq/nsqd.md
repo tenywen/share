@@ -2,12 +2,12 @@
 #####1. nsqd的main()函数在apps/nsqd/nsqd.go.
 main()函数的主要工作：
 
-*	创建nsqd
-*	监听端口,为每个连接创建client
+*	创建nsqd。
+*	监听端口，为每个连接创建client。
 
 	func main() {
 		// 设置默认配置
-		// 从stdin读取新配置并修改.是version,则显示版本号之后,退出main
+		// 从stdin读取新配置并修改。是version，则显示版本号之后,退出main
 		...
 
 		// 设置捕获终端信号 
@@ -40,9 +40,11 @@ main()函数的主要工作：
 		nsqd.Exit()
 	}
 
+-----------------------------------
+
 #####2. nsqd.LoadMetadata()在nsqd/nsqd.go.
 *	根据config设置读取dat文件,检查nsqd中是否存在dat中的topic和channel,没有则创建.
-	
+
 	func (n *NSQD) LoadMetadata() {
 		n.setFlag(flagLoading, true)
 		defer n.setFlag(flagLoading, false)
@@ -104,8 +106,8 @@ main()函数的主要工作：
 		}
 	}
 
-nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel().
 
+nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel().
 ######	[1]NewTopic()在nsqd/topic.go.
 *			创建topic对象，开启goroutine处理chans.	
 	func NewTopic(topicName string, ...) *Topic {
