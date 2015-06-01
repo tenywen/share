@@ -42,131 +42,126 @@ main()函数的主要工作：
 		}
 
 ## 2. nsqd.LoadMetadata()在nsqd/nsqd.go.
-*	根据config设置读取dat文件,检查nsqd中是否存在dat中的topic和channel,没有则创建
+* 读取dat文件,检查nsqd中是否存在dat中的topic和channel,没有则创建
 
-	
-    func (n *NSQD) LoadMetadata() {
-		n.setFlag(flagLoading, true)
-		defer n.setFlag(flagLoading, false)
-		fn := fmt.Sprintf(path.Join(n.opts.DataPath, "nsqd.%d.dat"), n.opts.ID)
-		data, err := ioutil.ReadFile(fn)
-		if err != nil {
-			return
-		}
-
-		js, err := simplejson.NewJson(data)
-		if err != nil {
-			return
-		}
-	
-		// 从json中获得topics	
-		topics, err := js.Get("topics").Array()
-		if err != nil {
-			return
-		}
-
-		// 如果nsqd中没有该topic则创建
-		for ti := range topics {
-			topicJs := js.Get("topics").GetIndex(ti)
-
-			topicName, err := topicJs.Get("name").String()
-			if err != nil {
-				return
-			}
-		
-			topic := n.GetTopic(topicName)
-
-			paused, _ := topicJs.Get("paused").Bool()
-			// 我的理解是如果nsqd刚启动的时候，设置了pause=true，那么就会永远阻塞在这里
-			if paused {
-				topic.Pause()
-			}
-
-			channels, err := topicJs.Get("channels").Array()
+		func (n *NSQD) LoadMetadata() {
+			n.setFlag(flagLoading, true)
+			defer n.setFlag(flagLoading, false)
+			fn := fmt.Sprintf(path.Join(n.opts.DataPath, "nsqd.%d.dat"), n.opts.ID)
+			data, err := ioutil.ReadFile(fn)
 			if err != nil {
 				return
 			}
 
-			// 没有该channel，则创建
-			for ci := range channels {
-				channelJs := topicJs.Get("channels").GetIndex(ci)
+			js, err := simplejson.NewJson(data)
+			if err != nil {
+				return
+			}
 
-				channelName, err := channelJs.Get("name").String()
+			// 从json中获得topics	
+			topics, err := js.Get("topics").Array()
+			if err != nil {
+				return
+			}
+
+			// 如果nsqd中没有该topic则创建
+			for ti := range topics {
+				topicJs := js.Get("topics").GetIndex(ti)
+
+				topicName, err := topicJs.Get("name").String()
 				if err != nil {
 					return
 				}
-				channel := topic.GetChannel(channelName)
 
-				paused, _ = channelJs.Get("paused").Bool() 
-				// nsqd启动时，设置了paused=true，那么就玩完了，因为此时连client都没有!
-				if paused {
-					channel.Pause()
-				}
+				topic := n.GetTopic(topicName)
+		   		paused, _ := topicJs.Get("paused").Bool()
+		   		// 我的理解是如果nsqd刚启动的时候，设置了pause=true，那么就会永远阻塞在这里
+		   		if paused {
+			   		topic.Pause()
+		   		}
+
+	   			channels, err := topicJs.Get("channels").Array()
+		   		if err != nil {
+			   		return
+		   		}
+
+	   			// 没有该channel，则创建
+	   			for ci := range channels {
+					channelJs := topicJs.Get("channels").GetIndex(ci)
+					channelName, err := channelJs.Get("name").String()
+					if err != nil {
+						return
+					}
+					channel := topic.GetChannel(channelName)
+
+					paused, _ = channelJs.Get("paused").Bool() 
+					// nsqd启动时，设置了paused=true，那么就玩完了，因为此时连client都没有!
+					if paused {
+						channel.Pause()
+					}
+				}	
 			}
 		}
-    }
 
 nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel().
-######	[1]NewTopic()在nsqd/topic.go.
+###	(1).NewTopic()在nsqd/topic.go.
 *	创建topic对象，开启goroutine处理chans.
 
-
-    func NewTopic(topicName string, ...) *Topic {
-		t := &Topic{}  
-		// 处理topic里面的chans
-		go t.messagePump() 
-		return t
-	}
-
-    func (t *Topic)messagePump() {
-		for {
-			select {
-				case msg = <- memoryMsgChan: // 获得内存中的message
-				case buf = <- backendChan:  // 获得 backend队列的message 
-					msg,err = decodeMessage(buf)
-				case <- t.ChannelUpdateChan: // 更新channel  
-					continue
-				case pause := <- t.PauseChan: 	// 暂停或者开始
-					continue 
-				case <- t.exitChan: // 退出
-					goto exit
-			}
-
-			for i,channel := range chans {
-				chanMsg := msg 
-				// 当channel数大于1时，拷贝message发送给每个channel
-				if i > 0 {
-					chanMsg = NewMessage(msg.ID,msg.Body)
-				}
-				// PutMessage最终调用diskQueue.writeOne()chanMsg写成文件
-				channel.PutMessage(chanMsg)
-			}
+		func NewTopic(topicName string, ...) *Topic {
+			t := &Topic{}  
+			// 处理topic里面的chans
+			go t.messagePump() 
+			return t
 		}
-    }
 
-######[2].NewChannel()在nsqd/channel.go.
+    	func (t *Topic)messagePump() {
+			for {
+				select {
+					case msg = <- memoryMsgChan: // 获得内存中的message
+					case buf = <- backendChan:  // 获得 backend队列的message 
+						msg,err = decodeMessage(buf)
+					case <- t.ChannelUpdateChan: // 更新channel  
+						continue
+					case pause := <- t.PauseChan: 	// 暂停或者开始
+					continue 
+					case <- t.exitChan: // 退出
+						goto exit
+				}
+
+				for i,channel := range chans {
+					chanMsg := msg 
+					// 当channel数大于1时，拷贝message发送给每个channel
+					if i > 0 {
+						chanMsg = NewMessage(msg.ID,msg.Body)
+					}
+					// PutMessage最终调用diskQueue.writeOne()chanMsg写成文件
+					channel.PutMessage(chanMsg)
+				}
+			}
+    	}
+
+### (2).NewChannel()在nsqd/channel.go.
 *	创建channel对象，开启goroutine处理chans
 
-
-    func (c *Channel)NewChannel(topicName string,channelName string,...) *Channel{
-		c := &Channel{}
-		go c.messagePump()	
-	}
-
-    func (c *Channel) messagePump() {
-		for {
-			select {
-				case msg = <- c.memoryMsgChan: 
-				case buf = <- c.backend.ReadChan():
-					msg,err = decodeMessage(buff)
-				case <- c.exitChan:  // 退出
-					goto exit
-			}
-
-			atomic.StoreInt32(&c.bufferedCount, 1) 
-			// 连接到nsqd的client会处理c.clientMsgChan
-			c.clientMsgChan <- msg
-			atomic.StoreInt32(&c.bufferedCount, 0)
+    	func (c *Channel)NewChannel(topicName string,channelName string,...) *Channel{
+			c := &Channel{}
+			go c.messagePump()	
 		}
-	}
+
+    	func (c *Channel) messagePump() {
+			for {
+				select {
+					case msg = <- c.memoryMsgChan: 
+					case buf = <- c.backend.ReadChan():
+						msg,err = decodeMessage(buff)
+					case <- c.exitChan:  // 退出
+						goto exit
+				}
+
+				atomic.StoreInt32(&c.bufferedCount, 1) 
+				// 连接到nsqd的client会处理c.clientMsgChan
+				c.clientMsgChan <- msg
+				atomic.StoreInt32(&c.bufferedCount, 0)
+			}
+		}
 
