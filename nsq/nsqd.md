@@ -136,7 +136,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 					if i > 0 {
 						chanMsg = NewMessage(msg.ID,msg.Body)
 					}
-					// channel.memoryMsgChan容量未满，则chanMsg 放入到channel.memoryMsgChan。否则写成文件
+					// channel.memoryMsgChan容量未满，则chanMsg 放入到channel.memoryMsgChan。否则存入c.backend
 					channel.PutMessage(chanMsg)
 				}
 			}
@@ -341,7 +341,7 @@ p.messagePump()在nsqd/protocol_v2.go
 						if !ok {
 							goto exit
 						}
-						// 把msg放到堆上
+						// 还真不知道这里有什么意义。msg 入堆
 						subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
 						// 计数器 + 1	
 						client.SendingMessage()
