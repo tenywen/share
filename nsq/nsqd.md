@@ -1,5 +1,5 @@
-# nsqd
-## 1. nsqd的main()函数在apps/nsqd/nsqd.go.
+## nsqd
+### 1. nsqd的main()函数在apps/nsqd/nsqd.go.
 
 main()函数的主要工作：
 
@@ -41,7 +41,7 @@ main()函数的主要工作：
 			nsqd.Exit()
 		}
 
-## 2. nsqd.LoadMetadata()在nsqd/nsqd.go.
+### 2. nsqd.LoadMetadata()在nsqd/nsqd.go.
 * 读取dat文件,检查nsqd中是否存在dat中的topic和channel,没有则创建
 
 		func (n *NSQD) LoadMetadata() {
@@ -104,7 +104,7 @@ main()函数的主要工作：
 		}
 
 nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel().
-###	(1).NewTopic()在nsqd/topic.go.
+#### (1).NewTopic()在nsqd/topic.go.
 *	创建topic对象，开启goroutine处理chans.
 
 		func NewTopic(topicName string, ...) *Topic {
@@ -140,7 +140,7 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 			}
     	}
 
-### (2).NewChannel()在nsqd/channel.go.
+#### (2).NewChannel()在nsqd/channel.go.
 *	创建channel对象，开启goroutine处理chans
 
     	func (c *Channel)NewChannel(topicName string,channelName string,...) *Channel{
@@ -165,3 +165,91 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 			}
 		}
 
+
+### 3. nsqd.Main() 在nsqd/nsqd.go
+* 主要功能为监听端口，为每个连接创建client.可以通过tcp，http，https连接到nsqd，这里只分析tcp.
+
+		func (n *NSQD) Main() {
+			// 监听tcp
+			tcpListener, err := net.Listen("tcp", n.opts.TCPAddress)
+			if err != nil {
+				os.Exit(1)
+			}
+			
+			n.Lock()
+			n.tcpListener = tcpListener
+			n.Unlock()
+			tcpServer := &tcpServer{ctx: ctx}
+			// goroutine
+			n.waitGroup.Wrap(func() {
+				protocol.TCPServer(n.tcpListener, tcpServer, n.opts.Logger)
+			})
+
+			// 监听http 
+			...
+			
+			// 监听https
+			...
+		}
+
+#### TCPServer()在internal/protocol/tcp_server.go 
+* 连接的实际处理函数 
+
+		func TCPServer(listener net.Listener, handler TCPHandler, l app.Logger) {
+			for {
+				clientConn, err := listener.Accept()
+				if err != nil {
+					if nerr, ok := err.(net.Error); ok && nerr.Temporary() {
+						continue
+					}
+					break
+				}
+				// handler函数
+				go handler.Handle(clientConn)
+			}
+		}
+
+##### Handle()在nsqd/tcp.go
+* 检查协议版本，调用IOLoop()
+		func (p *tcpServer) Handle(clientConn net.Conn) {
+
+			// 封装又封装。。。
+			// 循环处理clinetConn数据 
+			err = prot.IOLoop(clientConn)
+			if err != nil {
+				return
+			}
+		}
+
+###### IOLoop()在nsqd/protocol_v2.go 
+* 解析clientConn协议，并执行协议 
+
+		func (p *protocolV2) IOLoop(conn net.Conn) error {
+			clientID := atomic.AddInt64(&p.ctx.nsqd.clientIDSequence, 1)
+			client := newClientV2(clientID, conn, p.ctx)
+
+			messagePumpStartedChan := make(chan bool)
+			go p.messagePump(client, messagePumpStartedChan)
+			<-messagePumpStartedChan
+
+			for {
+				// 读取一行数据，去除回车换行符
+				line, err = client.Reader.ReadSlice('\n')
+				if err != nil {
+					if atomic.LoadInt32(&client.State) == stateClosing {
+						err = nil
+					} else {
+						err = fmt.Errorf("failed to read command - %s", err)
+					}
+					break
+				}
+				line = line[:len(line)-1]
+				if len(line) > 0 && line[len(line)-1] == '\r' {
+					line = line[:len(line)-1]
+				}
+				params := bytes.Split(line, separatorBytes)
+
+				// 执行params对于的命令	
+				response, err := p.Exec(client, params)
+			}
+		}
