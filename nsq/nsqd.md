@@ -1,12 +1,12 @@
 #### nsqd
-1. nsqd的main()函数在apps/nsqd/nsqd.go  
+#####1. nsqd的main()函数在apps/nsqd/nsqd.go.
 main()函数的主要工作：
 *	创建nsqd
 * 	监听端口,为每个连接创建client
 
 	func main() {
-		// 设置默认配置
-		// 从stdin读取新配置并修改。是version。则显示版本号之后，退出main
+		> 设置默认配置
+		> 从stdin读取新配置并修改.是version,则显示版本号之后,退出main
 		...
 
 		// 设置捕获终端信号 
@@ -39,8 +39,8 @@ main()函数的主要工作：
 		nsqd.Exit()
 	}
 
-2. nsqd.LoadMetadata()在nsqd/nsqd.go 
-*	函数主要是根据config设置读取dat文件,检查nsqd中是否存在dat中的topic和channel，没有则创建
+#####2. nsqd.LoadMetadata()在nsqd/nsqd.go.
+*	函数主要是根据config设置读取dat文件,检查nsqd中是否存在dat中的topic和channel，没有则创建.
 
 	func (n *NSQD) LoadMetadata() {
 		n.setFlag(flagLoading, true)
