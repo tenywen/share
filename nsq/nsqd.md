@@ -1,7 +1,7 @@
 ## nsqd 
 
-nsqd扮演的是接收，分发消息角色。nsqd中有三个重要的结构topic,channel,client
----
+** nsqd扮演的是接收，分发消息角色。nsqd中有三个重要的结构topic,channel,client **
+
 
 ### 1. nsqd的main()函数在apps/nsqd/nsqd.go.
 
