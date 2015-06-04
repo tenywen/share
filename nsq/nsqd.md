@@ -1,6 +1,6 @@
 ## nsqd 
 
-**nsqd扮演的是接收，分发消息角色。nsqd中有三个重要的结构topic,channel,client。nsqd可以比作一台电视，topic是其中某个频道。channel就是位置，占到一个位置就可以看电视节目。几个人同时占一个位置时，只能大家轮流看**
+**nsqd扮演的是接收，分发消息角色。nsqd中有三个重要的结构topic,channel,client。nsqd可以比作一台电视，topic是其中某个频道。channel就是位置，占到一个位置就可以看电视节目。几个人同时占一个位置时，只能大家轮流看。所以当有多个client同时sub一个channel时，同一个message只有一个client收到。**
 
 **topic**
 
@@ -12,9 +12,7 @@
 
 **client**
 
-nsqd会为主动连接的conn创建client。有接收消息的client，也有发送消息的client。
-
-接收消息的client从channel.clientMsgChan中获取数据。所以有多个client连接到一个channel时，一个message只有一个client接收
+nsqd会为主动连接的conn创建client。client从channel.clientMsgChan中得到message。当client接收到消息后，会将message在再次放入到channel的InFlightQueue。以防止由于网络问题，client没有收到message。只有channel收到client发送的FIN时，才会删除message。
 
 =====================================================================
 
@@ -23,7 +21,7 @@ nsqd会为主动连接的conn创建client。有接收消息的client，也有发
 main()函数的主要工作：
 
 * 创建nsqd。
-* 监听端口，为每个连接创建client
+* 监听端口。
 
 		func main() {
 			// 设置默认配置
@@ -39,7 +37,7 @@ main()函数的主要工作：
 			// 创建nsqd 
 			nsqd := nsqd.NewNSQD(opts) 
 
-			// 看起来好像是读取opts.DataPath路径的文件。其实是创建topics。
+			// 看起来好像是读取opts.DataPath路径的文件。实际上就是为nsqd的配置文件创建topics和channels
 			nsqd.LoadMetadata() 
 
 			// 记录topics/channels 
@@ -360,7 +358,7 @@ p.messagePump()在nsqd/protocol_v2.go
 						if !ok {
 							goto exit
 						}
-						// 还真不知道这里有什么意义。msg 入堆
+						// 再次保存message，防止client并没有收到message
 						subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
 						// 计数器 + 1	
 						client.SendingMessage()
