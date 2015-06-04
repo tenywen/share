@@ -10,6 +10,8 @@
 
 每个channel创建时，都会go messagePump(),它负责接收message,然后push到channel.clientMsgChan。channel.clientMsgChan是channel暴露给client唯一的go-chan。
 
+channel维护两个队列InFlightQueue和DeferredQueue。client 发布的有timeout的message会被channel push到DeferredQueue等待timeout后处理
+
 **client**
 
 nsqd会为主动连接的conn创建client。client从channel.clientMsgChan中得到message。当client接收到消息后，会将message在再次放入到channel的InFlightQueue。以防止由于网络问题，client没有收到message。只有channel收到client发送的FIN时，才会删除message。
@@ -208,7 +210,10 @@ nsqd.LoadMetadata()和nsqd.Main()函数中均会涉及到NewTopic()和NewChannel
 			...
 			
 			// 监听https
-			...
+			... 
+
+			// nsqd为每个channel建立一个queueWorkerLoop(),专门处理channel InFlightQueue和DeferredQueue 的message
+			n.waitGroup.Wrap(func() { n.queueScanLoop() })
 		}
 
 #### TCPServer()在internal/protocol/tcp_server.go 
