@@ -16,6 +16,7 @@ channel维护两个队列InFlightQueue和DeferredQueue。client 发布的有time
 
 nsqd会为主动连接的conn创建client。client从channel.clientMsgChan中得到message。当client接收到消息后，会将message在再次放入到channel的InFlightQueue。以防止由于网络问题，client没有收到message。只有channel收到client发送的FIN时，才会删除message。
 
+
 =====================================================================
 
 ### 1. nsqd的main()函数在apps/nsqd/nsqd.go.
