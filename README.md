@@ -6,7 +6,11 @@
 
 使用godep 
 
+[godep源码](https://github.com/tools/godep)
+
+[godep依赖](https://github.com/golang/go/wiki/GoGetTools)
+
 		export $GOPATH=workspace 
 		cd $GOPATH
 		go get github.com/tools/godep
-		sudo atp-get install mercurial  <url>https://github.com/golang/go/wiki/GoGetTools</url>
+		sudo atp-get install mercurial  
