@@ -13,4 +13,20 @@
 		export $GOPATH=workspace 
 		cd $GOPATH
 		go get github.com/tools/godep
-		sudo atp-get install mercurial  
+		sudo atp-get install mercurial   
+
+
+go使用proto buff 
+
+[下载](//github.com/google/protobuf/tree/v3.0.0-alpha-3.1)
+
+		$ ./configure 
+		$ make 
+		$ make check
+		$ make install  
+		$ go get -a github.com/golang/protobuf/protoc-gen-go 
+
+for example 
+		# from the grpc-common/go dir; invoke protoc
+		$ protoc -I ../protos ../protos/helloworld.proto --go_out=plugins=grpc:helloworld
+
