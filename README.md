@@ -4,7 +4,7 @@
 
 ===
 
-使用godep 
+#### 使用godep 
 
 [godep源码](https://github.com/tools/godep)
 
@@ -16,7 +16,7 @@
 		sudo atp-get install mercurial   
 
 
-go使用proto buff 
+#### go使用proto buff 
 
 [下载](//github.com/google/protobuf/tree/v3.0.0-alpha-3.1)
 
@@ -25,6 +25,11 @@ go使用proto buff
 		$ make check
 		$ make install  
 		$ go get -a github.com/golang/protobuf/protoc-gen-go 
+
+[依赖] 
+
+		$ sudo apt-get install autoconf
+		$ sudo apt-get install libtool
 
 for example 
 
