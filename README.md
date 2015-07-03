@@ -27,6 +27,7 @@ go使用proto buff
 		$ go get -a github.com/golang/protobuf/protoc-gen-go 
 
 for example 
+
 		# from the grpc-common/go dir; invoke protoc
 		$ protoc -I ../protos ../protos/helloworld.proto --go_out=plugins=grpc:helloworld
 
