@@ -2,6 +2,8 @@
 
 * 1.nsq 
 
+* 2.grpc-go
+
 ===
 
 #### 使用godep 
@@ -32,6 +34,10 @@
 		$ sudo apt-get install libtool
 
 for example 
+	
+		$ sudo ldconfig  
+		# or 
+		$ export LD_LIBRARY_PATH=/usr/local/lib
 
 		# from the grpc-common/go dir; invoke protoc
 		$ protoc -I ../protos ../protos/helloworld.proto --go_out=plugins=grpc:helloworld
