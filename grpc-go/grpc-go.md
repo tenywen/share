@@ -67,52 +67,52 @@ grpc.ClientConn 再次被封装一层 ClientConn{transport transport.ClientTrans
 
 ClientTransport 为Interface{} 对应的实际结构为 http2Client.这才是grpc中实际存储conn得信息
 
-但http2Client中数据的读写却是framer
+但http2Client中数据的读写却是framer 
 
-`
-type http2Client struct {
-	target string   // server name/addr
-	conn   net.Conn // underlying communication channel
-	nextID uint32   // the next stream ID to be used
+httpClient 在client很重要，所以展示结构
 
-	// writableChan synchronizes write access to the transport.
-	// A writer acquires the write lock by sending a value on writableChan
-	// and releases it by receiving from writableChan.
-	writableChan chan int
-	// shutdownChan is closed when Close is called.
-	// Blocking operations should select on shutdownChan to avoid
-	// blocking forever after Close.
-	// TODO(zhaoq): Maybe have a channel context?
-	shutdownChan chan struct{}
-	// errorChan is closed to notify the I/O error to the caller.
-	errorChan chan struct{}
+		type http2Client struct {
+			target string   // server name/addr
+			conn   net.Conn // underlying communication channel
+			nextID uint32   // the next stream ID to be used
 
-	framer *framer
-	hBuf   *bytes.Buffer  // the buffer for HPACK encoding
-	hEnc   *hpack.Encoder // HPACK encoder
+			// writableChan synchronizes write access to the transport.
+			// A writer acquires the write lock by sending a value on writableChan
+			// and releases it by receiving from writableChan.
+			writableChan chan int
+			// shutdownChan is closed when Close is called.
+			// Blocking operations should select on shutdownChan to avoid
+			// blocking forever after Close.
+			// TODO(zhaoq): Maybe have a channel context?
+			shutdownChan chan struct{}
+			// errorChan is closed to notify the I/O error to the caller.
+			errorChan chan struct{}
 
-	// controlBuf delivers all the control related tasks (e.g., window
-	// updates, reset streams, and various settings) to the controller.
-	controlBuf *recvBuffer
-	fc         *inFlow
-	// sendQuotaPool provides flow control to outbound message.
-	sendQuotaPool *quotaPool
-	// streamsQuota limits the max number of concurrent streams.
-	streamsQuota *quotaPool
+			framer *framer
+			hBuf   *bytes.Buffer  // the buffer for HPACK encoding
+			hEnc   *hpack.Encoder // HPACK encoder
 
-	// The scheme used: https if TLS is on, http otherwise.
-	scheme string
+			// controlBuf delivers all the control related tasks (e.g., window
+			// updates, reset streams, and various settings) to the controller.
+			controlBuf *recvBuffer
+			fc         *inFlow
+			// sendQuotaPool provides flow control to outbound message.
+			sendQuotaPool *quotaPool
+			// streamsQuota limits the max number of concurrent streams.
+			streamsQuota *quotaPool
 
-	authCreds []credentials.Credentials
+			// The scheme used: https if TLS is on, http otherwise.
+			scheme string
 
-	mu            sync.Mutex     // guard the following variables
-	state         transportState // the state of underlying connection
-	activeStreams map[uint32]*Stream
-	// The max number of concurrent streams
-	maxStreams int
-	// the per-stream outbound flow control window size set by the peer.
-	streamSendQuota uint32
-}
-`
+			authCreds []credentials.Credentials
+
+			mu            sync.Mutex     // guard the following variables
+			state         transportState // the state of underlying connection
+			activeStreams map[uint32]*Stream
+			// The max number of concurrent streams
+			maxStreams int
+			// the per-stream outbound flow control window size set by the peer.
+			streamSendQuota uint32
+		}
 
 
