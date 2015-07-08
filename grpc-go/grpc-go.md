@@ -9,16 +9,18 @@ grpc-go利用proto buff和http2封装的rpc。底层的传输层使用http2。
  * 1.建立连接
 
  * 2.生成client 
-	
-		// 调用newHTTP2Client()
-		conn,err := grpc.Dail(serverAddr, opts)  
+
+```	
+	// 调用newHTTP2Client()
+	conn,err := grpc.Dail(serverAddr, opts)  
 		
-		// client 为proto buff 的封装。包含conn结构
-		client := pb.NewXXXClient(conn)
+	// client 为proto buff 的封装。包含conn结构
+	client := pb.NewXXXClient(conn)
 
-		// 调用某个具体rpc
-		...			
+	// 调用某个具体rpc
+	...			
 
+```
 
 newHTTP2Client 发送和接受数据.将接受的数据填入每个rpc的stream中
 
