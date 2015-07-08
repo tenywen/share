@@ -20,7 +20,7 @@
 
 #### go使用proto buff 
 
-[下载](//github.com/google/protobuf/tree/v3.0.0-alpha-3.1)
+[下载](https://github.com/google/protobuf/tree/v3.0.0-alpha-3.1)
 
 		$ ./configure 
 		$ make 

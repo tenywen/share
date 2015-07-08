@@ -2,20 +2,25 @@
 
 grpc-go利用proto buff和http2封装的rpc。底层的传输层使用http2。 
 
-###proto buff 
-xxx.proto定义的service 在生成xxx.pb.go还会额外被封装一层包含conn的结构 
-
 ### client 
 
-* client基本行为，建立连接，然后生成client 
+* client的基本行为:
+
+1.建立连接
+
+2.生成client 
 	
-		// 调用newHTTP2Client
+		// 调用newHTTP2Client()
 		conn,err := grpc.Dail(serverAddr, opts)  
+		
 		// client 为proto buff 的封装。包含conn结构
 		client := pb.NewXXXClient(conn)
 
+		// 调用某个具体rpc
+		...			
 
-* newHTTP2Client 
+
+newHTTP2Client 发送和接受数据.将接受的数据填入每个rpc的stream中
 
 		// 设置默认的dialer
 		if opts.Dialer == nil {
@@ -48,28 +53,23 @@ xxx.proto定义的service 在生成xxx.pb.go还会额外被封装一层包含con
 		// 同时只能有一个writer 进入transport	
 		t.writableChan <- 0
 
-		// 接受in message
+		// 接受in message.将数据copy到stream中
 		// for {
 		//     frame,err := t.framer.readFrame() 
 		// 	   switch frame := frame.(type) {
-		//         case *....
+		//         case *.... 
+		// 		   case *http2.DataFrame:
+		// 				// s, ok := t.getStream(f)
+		// 				// copy(data, f.Data())
+		// 				// s.write(recvMsg{data: data})
+		// 		        t.handleData(frame)
 		//     }
 		// }
 		go t.reader()
 
-* client建立之后，就调用某个具体rpc了 
+### 总结client功能
 
-protobuff 中定义的service xxx
-
-service xxx 被proto buff 封装为 XXXClient{conn *grpc.ClientConn}	
-
-grpc.ClientConn 再次被封装一层 ClientConn{transport transport.ClientTransport} 
-
-ClientTransport 为Interface{} 对应的实际结构为 http2Client.这才是grpc中实际存储conn得信息
-
-但http2Client中数据的读写却是framer 
-
-httpClient 在client很重要，所以展示结构
+protobuff中定义service xxx。service xxx被proto buff封装为XXXClient{conn *grpc.ClientConn}。grpc.ClientCon被封装为ClientConn{transport transport.ClientTransport}。ClientTransport为Interface{},对应的实际结构为http2Client。这才是grpc中实际存储conn等所有信息的结构。但http2Client中数据的读写却是http2Client.framer。每个rpc call时都会生成stream并且在http2Client.activeStreams中注册。server返回的frame信息中有stream_id以此确定具体rpc。frame将数据copy到rpc对应的stream中。
 
 		type http2Client struct {
 			target string   // server name/addr
