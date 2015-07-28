@@ -1,6 +1,6 @@
 ## grpc-go
 
-grpc-go利用proto buff和http2封装的rpc。底层的传输层使用http2。 
+grpc是HTTP/2 RPC的框架。基于HTTP/2标准
 
 ### client 
 
