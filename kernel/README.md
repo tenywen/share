@@ -10,8 +10,8 @@ int a = 0;
 int c = 1; 
 
 // cpu执行顺序可能为
-int c = 0;
-int a = 1;
+int c = 1;
+int a = 0;
 ```
 
 乱序执行的原因:
